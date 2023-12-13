@@ -1,43 +1,117 @@
-
+import pandas as pd
+import matplotlib.pyplot as plt
+import csv
 import sys
-from PyQt5.QtCore import Qt, QEvent,QRect, QPropertyAnimation,QParallelAnimationGroup, QEasingCurve
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel,QStackedWidget, QVBoxLayout, QWidget, QHBoxLayout, QSizePolicy, QSpacerItem
+from PyQt5.QtCore import Qt, QEvent,QRect, QPropertyAnimation,QParallelAnimationGroup, QEasingCurve, pyqtSlot
+from PyQt5.QtGui import QIcon,QPainter, QPen
+from PyQt5.QtWidgets import QApplication,QLineEdit, QMainWindow,QMessageBox,QComboBox, QPushButton, QLabel,QStackedWidget, QVBoxLayout, QWidget, QHBoxLayout, QSizePolicy, QSpacerItem
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from PyQt5.uic import loadUi
 import resources
 import Hashing_Password
+import validations
 
 class MainWindow_2(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.showPassIcon = QIcon("://icons//icons//eye.svg")
+        self.hidePassIcon = QIcon("://icons//icons//eye-off.svg")
         loadUi("Credentials.ui",self)
+
+        self.password_2.setEchoMode(QLineEdit.Password)
+        self.password_3.setEchoMode(QLineEdit.Password)
+
+        self.hidePassword = True
+        self.hidePassword2 = True
+        self.showPassBtn.clicked.connect(self.show_password)
+        self.showPassBtn_2.clicked.connect(self.show_password)
+
+
+        self.LoginBtn2_2.clicked.connect(self.switch_to_login_page)
         self.SignUpBtn.clicked.connect(self.switch_to_signup_page)    
-        self.LoginBtn2.clicked.connect(self.switch_to_login_page)
-        self.SignUpBtn2.clicked.connect(self.signUp)
-        self.LogInBtn.clicked.connect(self.signIn)
+        
+        
+        self.SignUpBtn2_2.clicked.connect(self.signUp)
+        self.LoginBtn.clicked.connect(self.signIn)
+
+    def checkPasswordVisibility(self):
+        if self.hidePassword or self.hidePassword2:
+            self.showPassBtn.setIcon(self.hidePassIcon)
+            self.showPassBtn_2.setIcon(self.hidePassIcon)
+        else:
+            self.showPassBtn.setIcon(self.showPassIcon)
+            self.showPassBtn_2.setIcon(self.showPassIcon)
+
+
+    def show_password(self):
+        if self.hidePassword :
+            self.password_2.setEchoMode(QLineEdit.Normal)
+            self.hidePassword = False
+            self.checkPasswordVisibility()
+        else:
+            self.password_2.setEchoMode(QLineEdit.Password)
+            self.hidePassword = True
+            self.checkPasswordVisibility()    
+
+        if self.hidePassword2 :
+            self.password_3.setEchoMode(QLineEdit.Normal)
+            self.hidePassword2 = False
+            self.checkPasswordVisibility()
+        else:
+            self.password_3.setEchoMode(QLineEdit.Password)
+            self.hidePassword2 = True
+            self.checkPasswordVisibility()     
+
+    def clearSignUpInput(self):
+        self.username_3.clear()
+        self.password_3.clear()
+
+    def clearLoginInput(self):
+        self.username_2.clear()
+        self.password_2.clear()    
 
     def switch_to_login_page(self):
         self.stackedWidget.setCurrentIndex(0)
+        self.clearSignUpInput()
 
     def switch_to_signup_page(self):
         self.stackedWidget.setCurrentIndex(1) 
+        self.clearLoginInput()
 
     def signIn(self):
-        print('hey')
-        name = self.username.toPlainText()
-        password = self.password.toPlainText()
-        print('hey')
-        check = Hashing_Password.signIn(name, password)
-        print('hey')
-        if check:
-            self.mainWindow = MainWindow()  
-            self.mainWindow.show()
+        try:
 
+            name = self.username_2.text()
+            password = self.password_2.text()
+            check = Hashing_Password.signIn(name, password)
+            if check:
+                self.mainWindow = MainWindow()  
+                self.mainWindow.show()
+                self.hide()
+        except Exception as e:
+            print(str(e))
 
     def signUp(self):
-        name = self.username_su.toPlainText()
-        password = self.password_su.toPlainText()
-        Hashing_Password.signUp(name, password)
+        try:
+            name = self.username_3.text()
+            password = self.password_3.text()
+            
+            isName = validations.name_validation(name)
+            isPassword = validations.password_validation(password)
+
+            if isName and isPassword:
+                if Hashing_Password.signUp(name, password):
+                    QMessageBox.information(self, 'SignUp', "You have successfuly Signed Up", QMessageBox.Ok)
+                    self.switch_to_login_page()
+                else:
+                    QMessageBox.information(self, 'SignUp', "Username already present", QMessageBox.Ok)
+            else:
+                if not isName:
+                    QMessageBox.information(self, 'Error', "Username should not have symbols or empty space", QMessageBox.Ok)
+                else:
+                    QMessageBox.information(self, 'Error', "Password should have symbols and must have greater length than 5", QMessageBox.Ok)
+        except Exception as e:
+            print(e)
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -47,7 +121,7 @@ class MainWindow(QMainWindow):
         self.maximizedIcon = QIcon("://icons//icons//copy.svg")
         # Remove default title bar and set window flags
         self.setWindowFlag(Qt.FramelessWindowHint)
-        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setAttribute(Qt.WA_TranslucentBackground) 
 
         self.titleBar = QWidget(self)
         
@@ -55,22 +129,73 @@ class MainWindow(QMainWindow):
         self.restoreBtn.clicked.connect(self.toggle_maximize)
         self.minimizeBtn.clicked.connect(self.minimize_window)
         self.closeBtn.clicked.connect(self.close_window)
-         # Connect button signals to functions
-        self.settingBtn.clicked.connect(self.show_settings)
-        self.helpBtn.clicked.connect(self.show_help)
+        self.dataBtn.clicked.connect(self.switch_to_graph_page)
+        self.dataBtn_2.clicked.connect(self.switch_to_graph_page)
+        self.switch_to_home_page()
+        self.homeBtn.clicked.connect(self.switch_to_home_page)
+        self.homeBtn_2.clicked.connect(self.switch_to_home_page)
+        self.searchBtn.clicked.connect(self.switch_to_search_page)
+        self.searchBtn_2.clicked.connect(self.switch_to_search_page)
 
-        # Initialize stacked widget
-        self.leftStackedWidget.setCurrentIndex(0)  # Set the initial index of the stacked widget
-        self.current_index = 0  # Variable to track the current index
+        self.searchBar.textChanged.connect(self.handle_text_changed)
 
-        # # Get the stacked widget from the loaded UI
-        # self.leftleftStackedWidget = self.findChild(QleftStackedWidget, "leftleftStackedWidget")
+        self.centerMenuContainer.hide()
+        self.mainBodyContent.hide()
 
-        # # Connect buttons to switch between stacked widgets
-        # self.settingBtn.clicked.connect(lambda: self.change_page(0))
-        # self.helpBtn.clicked.connect(lambda: self.change_page(1))
+        self.menuButton.clicked.connect(self.toggle_visibility)
+        
+        self.graph_widget = GraphWidget([])  # Empty data initially
 
+        # Check if layout is already set for graphFrame
+        if self.graphFrame.layout() is None:
+            graph_frame_layout = QVBoxLayout()
+            self.graphFrame.setLayout(graph_frame_layout)
+        self.graphFrame.layout().addWidget(self.graph_widget)
 
+        self.graphBtn.raise_()
+        self.graphBtn.clicked.connect(self.create_graph)
+
+    # Create a QComboBox for displaying suggestions
+        self.searchResult.setPlaceholderText("Suggestions")
+        self.searchResult.setMaxVisibleItems(5)
+
+    def handle_text_changed(self, text):
+        # Clear the previous suggestions
+        self.searchResult.clear()
+
+        # Perform search or filtering logic here based on 'text'
+        # For example, you might have a list of suggestions to show
+        # Here, we are displaying suggestions containing the entered text
+
+        search_results = ["Apple", "Banana", "Orange", "Pineapple", "Grapes", "Watermelon", "Peach", "Pear"]
+
+        if text:
+            matching_results = [result for result in search_results if text.lower() in result.lower()]
+            self.searchResult.addItems(matching_results)
+
+    def switch_to_graph_page(self):
+        self.stackedWidget.setCurrentIndex(0)
+
+    def switch_to_home_page(self):
+        self.stackedWidget.setCurrentIndex(1)    
+
+    def switch_to_search_page(self):
+        self.stackedWidget.setCurrentIndex(2)    
+
+    def create_graph(self):
+        data = [10, 20, 30, 40, 50]  # Sample data for the graph - replace with your data
+        self.graph_widget.data = data
+        self.graph_widget.draw_graph()
+        #self.stackedWidget.setCurrentIndex(0)  # Show the graphPage
+
+    def toggle_visibility(self):
+        # Toggle visibility of the QWidget
+        if self.leftMenuContainer.isVisible():
+            self.leftMenuContainer.hide()
+            self.centerMenuContainer.show()
+        else:
+            self.leftMenuContainer.show()
+            self.centerMenuContainer.hide()
 
     def event(self, event):
         if event.type() == QEvent.WindowStateChange:
@@ -92,68 +217,25 @@ class MainWindow(QMainWindow):
     def close_window(self):
         self.close()
 
-    # def change_page(self, index):
-    #     current_index = self.leftleftStackedWidget.currentIndex()
-    #     if index != current_index:
-    #         start_geometry = self.leftleftStackedWidget.geometry()
-    #         self.leftleftStackedWidget.setCurrentIndex(index)
-    #         end_geometry = self.leftleftStackedWidget.geometry()
+class GraphWidget(QWidget):
+    def __init__(self, data):
+        super().__init__()
 
-    #         # Create animation to slide between widgets
-    #         self.slide_widget(self.leftleftStackedWidget, start_geometry, end_geometry)
+        self.data = data
+        self.figure, self.ax = plt.subplots(figsize=(2, 2))
+        self.canvas = FigureCanvas(self.figure)
+        layout = QVBoxLayout()
+        layout.addWidget(self.canvas)
+        self.setLayout(layout)
+        #self.raise_()  # Bring the GraphWidget to the front
 
-    # def slide_widget(self, widget, start_geometry, end_geometry):
-    #     # Create animation
-    #     self.animation = QPropertyAnimation(widget, b"geometry")
-    #     self.animation.setDuration(500)  # Set animation duration in milliseconds
-    #     self.animation.setStartValue(start_geometry)
-    #     self.animation.setEndValue(end_geometry)
-    #     self.animation.setEasingCurve(QEasingCurve.InOutQuad)
-    #     self.animation.start()
-
-
-    
-    def show_settings(self):
-        if self.current_index != 0:
-            self.slide_widget(0)
-            self.current_index = 0
-
-    def show_help(self):
-        if self.current_index != 1:
-            self.slide_widget(1)
-            self.current_index = 1
-
-    def slide_widget(self, index):
-        current_widget = self.leftStackedWidget.currentWidget()
-        target_widget = self.leftStackedWidget.widget(index)
-
-        start_geometry = current_widget.geometry()
-        end_geometry = target_widget.geometry()
-
-        start_geometry.moveLeft(self.width())
-        end_geometry.moveLeft(0)
-
-        current_widget.setGeometry(start_geometry)
-        target_widget.setGeometry(end_geometry)
-
-        animation_current = QPropertyAnimation(current_widget, b"geometry")
-        animation_current.setDuration(500)
-        animation_current.setStartValue(start_geometry)
-        animation_current.setEndValue(start_geometry.translated(self.width(), 0))
-        animation_current.setEasingCurve(QEasingCurve.InOutQuad)
-
-        animation_target = QPropertyAnimation(target_widget, b"geometry")
-        animation_target.setDuration(500)
-        animation_target.setStartValue(end_geometry.translated(-self.width(), 0))
-        animation_target.setEndValue(end_geometry)
-        animation_target.setEasingCurve(QEasingCurve.InOutQuad)
-
-        group_animation = QParallelAnimationGroup()
-        group_animation.addAnimation(animation_current)
-        group_animation.addAnimation(animation_target)
-        group_animation.start()
-
-        self.leftStackedWidget.setCurrentIndex(index)
+    def draw_graph(self):
+        self.ax.clear()
+        self.ax.plot(self.data, marker='o', linestyle='-')
+        self.ax.set_title('Graph of Data')
+        self.ax.set_xlabel('X-axis Label')
+        self.ax.set_ylabel('Y-axis Label')
+        self.canvas.draw()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

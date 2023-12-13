@@ -53,6 +53,16 @@ class PasswordHashing:
         self.password_table = new_table
         self.size = new_size
 
+    def username_exists(self, username):
+        index = self.get_hash(username)
+
+        # Check if the username already exists in the password table
+        for node in self.password_table[index]:
+            if node.key == username:
+                return True  # Username exists
+
+        return False  # Username does not exist
+
     def verify_password(self, username, password):
         index = self.get_hash(username)
 
@@ -82,8 +92,12 @@ class PasswordHashing:
             self.password_table[index].append(KeyNode(username, password_hash))
 
 def signUp(userName, password):
-    password_hashing.update_key(userName, password)
-    password_hashing.save_to_csv("passwords.csv")
+    if password_hashing.username_exists(userName):
+        return False
+    else:
+        password_hashing.update_key(userName, password)
+        password_hashing.save_to_csv("passwords.csv")
+        return True
 
 def signIn(userName, password):
     if password_hashing.verify_password(userName, password):

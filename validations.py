@@ -8,6 +8,18 @@ def name_validation(name):
 
     return True
 
+def string_validation(sentence):
+    if not sentence:
+        return False
+    if isinstance(sentence, str):
+        for c in sentence:
+            if not (c.isalpha() or c.isspace()):
+                return False
+        
+        return True
+    else:
+        return False
+
 def int_validation(value):
     try:
         int_value = int(value)
